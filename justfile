@@ -22,6 +22,20 @@ exec:
 stop:
   podman rm -f agent
 
+# try a webtop flavor locally at http://localhost:3000, `just webtop debian-xfce arm64` to match t4g (slow under emulation)
+# separate webtop-test volume, so it starts with an empty /config
+webtop tag="debian-i3" arch="amd64":
+  podman run -d --replace --name webtop-test --arch {{arch}} --pull=newer \
+    -e PUID=1000 -e PGID=1000 -e TZ=America/New_York \
+    --shm-size 1g -p 127.0.0.1:3000:3000 \
+    -v webtop-test:/config:Z -v ./webtop:/opt/webtop:ro,Z \
+    lscr.io/linuxserver/webtop:{{tag}}
+  @echo "http://localhost:3000  (tools: bash /opt/webtop/setup.sh, logs: podman logs -f webtop-test, memory: podman stats webtop-test)"
+
+webtop-clean:
+  podman rm -f webtop-test
+  podman volume rm -f webtop-test
+
 # CI does this on push to main, this is for a quick manual push (assuming you are logged in)
 upload: test
   podman push {{image}}
@@ -102,6 +116,28 @@ plan:
 apply:
   tofu apply
   just ami-clean
+
+# fresh instance (wipes the server's data) from the newest agents-* AMI, run `just ami` first
+# checks for the AMI before -replace, which destroys the old instance before creating the new one
+rebuild:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  ami=$(aws ec2 describe-images --region {{region}} --owners self --filters "Name=name,Values=agents-*" "Name=state,Values=available" --query "sort_by(Images,&CreationDate)[-1].ImageId" --output text)
+  [ "$ami" != "None" ] || { echo "no available agents-* AMI, run just ami first"; exit 1; }
+  echo "rebuilding from $ami"
+  old=$(tofu output -raw ipv4 2>/dev/null || true)
+  tofu apply -replace=aws_instance.main
+  [ -z "$old" ] || ssh-keygen -R "$old" >/dev/null 2>&1 || true
+  just ami-clean
+
+# stop paying for compute: destroys the instance, its root EBS (all podman volumes, /config included) and its public ipv4
+# keeps the security group, IAM, SSM env, AMI bucket. Bring it back with `just ami` then `just apply`
+down:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  old=$(tofu output -raw ipv4 2>/dev/null || true)
+  tofu destroy -target=aws_instance.main
+  [ -z "$old" ] || ssh-keygen -R "$old" >/dev/null 2>&1 || true
 
 # deregister every agents-* AMI and delete its snapshot (~$0.05/GB-month), `just ami` makes a new one when needed
 ami-clean:

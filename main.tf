@@ -41,7 +41,7 @@ resource "aws_instance" "main" {
   # newest agents-* AMI. After `just ami-clean` there is none, and the provider rejects a null ami even with
   # ignore_changes, so fall back to a placeholder: ignored for the existing instance, a clear error on create
   ami           = try(data.aws_ami_ids.image.ids[0], "ami-none-run-just-ami")
-  instance_type = "t4g.small"
+  instance_type = "t4g.medium"
   subnet_id     = local.subnet # ipv6
   key_name      = local.name
   # too many things break without the ipv4
@@ -52,7 +52,7 @@ resource "aws_instance" "main" {
   # ipv6_address_count   = 1
   iam_instance_profile = local.name
   root_block_device {
-    volume_size = 12 # base image uses ~2Gb
+    volume_size = 24
   }
   # the AMI disk is bib's default size, bootc-generic-growpart.service grows it to the volume on boot
 

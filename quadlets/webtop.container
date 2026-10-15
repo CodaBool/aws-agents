@@ -4,15 +4,19 @@ ContainerName=webtop
 Environment=PUID=1000
 Environment=PGID=1000
 Environment=TZ=America/New_York
-Image=lscr.io/linuxserver/webtop:alpine-kde
+# https://github.com/linuxserver/docker-webtop
+Image=lscr.io/linuxserver/webtop:debian-i3
 PublishPort=127.0.0.1:8666:3000
 
 EnvironmentFile=%h/src/agent/quadlets/.env
 Volume=webtop.volume:/config:Z
+# tool installer
+Volume=%h/src/agent/quadlets/setup.sh:/usr/local/bin/webtop-setup:ro,Z
 # ram cap, not a reservation
-ShmSize=1g
+ShmSize=2g
 
-# no gpu on t4g, so no /dev/dri: software rendering only
+# software rendering only
+Environment=QT_QUICK_BACKEND=software
 
 # auto update
 AutoUpdate=registry
@@ -25,3 +29,7 @@ Restart=always
 [Install]
 # automatic startup
 WantedBy=default.target
+
+
+# alt+shift+q = close
+# alt+enter = open terminal

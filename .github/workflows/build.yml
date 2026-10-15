@@ -11,8 +11,8 @@ env:
 
 jobs:
   release:
-    # native arm64 for t4g, no QEMU
-    runs-on: ubuntu-24.04-arm
+    # https://github.com/actions/runner-images#available-images
+    runs-on: ubuntu-26.04-arm
     permissions:
       contents: write # required for github release
       packages: write

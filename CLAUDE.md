@@ -21,6 +21,7 @@ Repo `github.com/CodaBool/aws-agents` (public). Image `ghcr.io/codabool/aws-agen
 ## Quadlet layout
 - First boot, `agent-quadlets-clone.service` clones the repo to `~/src/agent` and symlinks `~/.config/containers/systemd -> ../../src/agent/quadlets`.
 - Quadlet scans recursively, so only `quadlets/` is linked. Put every `.container`/`.volume` there and nowhere else in the repo.
+- `webtop/setup.sh` is mounted read-only at `/opt/webtop` in the webtop container (the directory is mounted, so changes from `git pull` show up). Run it by hand as `abc`: it installs node, godot, claude code and the godot MCP into `/config`, because apt installs are lost when the image updates.
 - Persistent data uses named volumes (`*.volume`), stored under the user's storage in `/var`, which survives bootc updates.
 - Host paths still say `agent` (`~/src/agent`, `agent-quadlets-clone`) while the repo/image say `aws-agents`. Intentional; changing them requires a migration on the live host.
 
@@ -30,7 +31,8 @@ Repo `github.com/CodaBool/aws-agents` (public). Image `ghcr.io/codabool/aws-agen
 - `just bootstrap` creates only the bucket + vmimport role (targeted apply), needed before the first `just ami`.
 - The EC2 key pair `agents` is not in Terraform: `just key` generates `~/.ssh/agents` locally if missing and imports the public half. Needed before the instance is created; `just ssh-ec2` uses it.
 - Cost target: under $0.10/month for AMI storage. `just apply` = `tofu apply` then `just ami-clean`, which deregisters every `agents-*` AMI and deletes its snapshots.
-- `main.tf` uses `data "aws_ami_ids"` (empty list allowed) so plans work with no AMI; `aws_instance.main` has `ignore_changes = [ami]` and a placeholder AMI string when none exist (a null `ami` fails provider validation even with `ignore_changes`). Creating or replacing the instance needs `just ami` first.
+- `main.tf` uses `data "aws_ami_ids"` (empty list allowed) so plans work with no AMI; `aws_instance.main` has `ignore_changes = [ami]` and a placeholder AMI string when none exist (a null `ami` fails provider validation even with `ignore_changes`). Creating or replacing the instance needs `just ami` first. Replace with `just rebuild`: it checks an AMI exists before `tofu apply -replace` (which destroys before creating), then runs `ami-clean`. Don't run `just apply` between `just ami` and a replace, its `ami-clean` removes the AMI.
+- `just down` = `tofu destroy -target=aws_instance.main`. The root EBS (`delete_on_termination` defaults to true) and the auto-assigned public ipv4 go with the instance, and all data on the host goes with them. Recreate with `just ami` then `just apply`.
 - bib does not tag AMIs; matching is on name `agents-*` + arm64.
 - Terraform is applied locally only, state in S3 bucket `codabool-tf`. The IAM role/profile `agents` only allows `ssm:GetParameter` on `/agents/env`.
 - Ask before anything that touches AWS (`tofu apply`, `just ami`, `just bootstrap`, `just key`, `just ami-clean`) or pushes to GHCR.

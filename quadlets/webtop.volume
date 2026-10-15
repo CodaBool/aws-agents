@@ -1,3 +1,22 @@
 # lives in ~/.local/share/containers/storage/volumes (/var), survives bootc updates
 [Volume]
 VolumeName=webtop
+
+
+# Notes on software
+# godot can be gotten from https://github.com/pkgforge-dev/Godot-AppImage/releases
+# claude using cli = `curl -fsSL https://claude.ai/install.sh | bash`
+# brave using appimage = https://github.com/ivan-hc/Brave-appimage/releases/download/continuous-stable/Brave-Web-Browser-stable-1.97.57-aarch64.AppImage
+#  --appimage-extract
+
+
+# claude
+#  - claude mcp add --transport stdio godot -- npx -y @coding-solo/godot-mcp
+
+# grow volume
+# SRC=$(findmnt -no SOURCE /sysroot)
+# DISK=/dev/$(lsblk -no PKNAME "$SRC")
+# PART=$(cat /sys/class/block/$(basename "$SRC")/partition)
+# lsblk "$DISK"
+# findmnt /var
+# sudo xfs_growfs /var

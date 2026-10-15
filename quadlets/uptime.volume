@@ -1,3 +1,0 @@
-# lives in ~/.local/share/containers/storage/volumes (/var), survives bootc updates
-[Volume]
-VolumeName=uptime
