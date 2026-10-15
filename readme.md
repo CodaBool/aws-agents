@@ -44,11 +44,14 @@ cd ~/src/agent && git pull && systemctl --user daemon-reload   # or the `pull` a
 ```
 Data is in named volumes (`~/.local/share/containers/storage/volumes`), `/var` survives bootc updates.
 
-The tunnel needs its token once:
+Secrets come from SSM. The local `.env` (gitignored) holds them, e.g.
 ```sh
-mkdir -p ~/.config/agent && install -m 600 /dev/null ~/.config/agent/tunnel.env
-echo "TUNNEL_TOKEN=..." > ~/.config/agent/tunnel.env && systemctl --user restart tunnel
+IP=...          # local only: ssh_ipv4 in main.tf
+TUNNEL_TOKEN=...
+DISCORD_TOKEN=...
 ```
+`just apply` puts every key but `IP` into the SecureString `/agents/env`. On every boot `agent-secrets.service` reads it with the instance role, replaces `~/src/agent/quadlets/.env` (mode 600) and restarts the tunnel.
+After changing a secret: `just apply`, then reboot or `sudo systemctl restart agent-secrets`.
 
 ## Expose Podman socket
 `podman.socket` is enabled for every user (`systemctl --global`), at `/run/user/1000/podman/podman.sock`

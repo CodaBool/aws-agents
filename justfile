@@ -9,11 +9,12 @@ build:
   podman build --arch arm64 --pull=newer -t {{image}} .
 
 # lint, units enabled, user + linger, quadlets parse
+# --pull=never: with --arch, podman otherwise replaces the local build with :latest from GHCR
 test: build
-  tests/smoke.sh {{image}} --arch arm64
+  tests/smoke.sh {{image}} --arch arm64 --pull=never
 
 run: build
-  podman run --rm --arch arm64 --name agent {{image}} tail -f /dev/null
+  podman run --rm --arch arm64 --pull=never --name agent {{image}} tail -f /dev/null
 
 exec:
   podman exec -it agent bash

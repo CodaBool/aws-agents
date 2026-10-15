@@ -10,7 +10,7 @@ podman run --rm "$@" -v "$repo/quadlets:/quadlets:ro,z" "$image" bash -euo pipef
   bootc container lint
 
   echo "== packages"
-  rpm -q git cloud-init podman
+  rpm -q git cloud-init podman awscli2
 
   echo "== ec2-user"
   getent passwd ec2-user | grep -q "^ec2-user:x:1000:1000:.*:/var/home/ec2-user:/bin/bash$"
@@ -20,7 +20,7 @@ podman run --rm "$@" -v "$repo/quadlets:/quadlets:ro,z" "$image" bash -euo pipef
   grep -q "linger/ec2-user" /usr/lib/tmpfiles.d/ec2-user.conf
 
   echo "== system units enabled"
-  for u in bootc-fetch-apply-updates.timer agent-quadlets-clone.service cloud-init.target; do
+  for u in bootc-fetch-apply-updates.timer agent-quadlets-clone.service agent-secrets.service cloud-init.target; do
     printf "%-40s %s\n" "$u" "$(systemctl is-enabled "$u")"
     systemctl is-enabled -q "$u"
   done
@@ -31,6 +31,10 @@ podman run --rm "$@" -v "$repo/quadlets:/quadlets:ro,z" "$image" bash -euo pipef
     systemctl --global is-enabled -q "$u"
   done
 
+  echo "== agent-secrets"
+  test -x /usr/libexec/agent-secrets
+  bash -n /usr/libexec/agent-secrets
+
   echo "== bootc update timer is daily"
   systemctl cat bootc-fetch-apply-updates.timer 2>/dev/null | grep -q "^OnCalendar=" \
     || grep -q "^OnCalendar=" /usr/lib/systemd/system/bootc-fetch-apply-updates.timer.d/*.conf
@@ -38,6 +42,7 @@ podman run --rm "$@" -v "$repo/quadlets:/quadlets:ro,z" "$image" bash -euo pipef
   echo "== unit files verify"
   systemd-analyze verify --man=no \
     /usr/lib/systemd/system/agent-quadlets-clone.service \
+    /usr/lib/systemd/system/agent-secrets.service \
     /usr/lib/systemd/user/podman-prune.service \
     /usr/lib/systemd/user/podman-prune.timer
 

@@ -23,13 +23,18 @@ locals {
   name   = "agents" # AMI name prefix ("agents-*" from `just ami`), key pair name
   subnet = "subnet-02bd6f23bd2e48675"
   ip     = "2600:1f18:1248:e300:fdde:c3dd:7e9c:8da0"
-  # replace with your ipv4
-  ssh_ipv4 = ["/32"]
+  # SSH is allowed only from your ipv4, IP=<addr> in .env (gitignored), `curl -4 ifconfig.co`
+  ssh_ipv4 = ["${local.env.IP}/32"]
   # replace with your ipv6
   # ssh_ipv6 = ["/128", "/128"]
   # `just ami` uploads the disk here for the snapshot import, must match justfile
   ami_bucket = "codabool-agents-ami-import"
+  # KEY=value lines of .env, comments and blank lines skipped
+  # everything but local_only is sent to the host through SSM (aws_ssm_parameter.env)
+  env        = { for t in regexall("(?m)^([A-Za-z_][A-Za-z0-9_]*)=(.*)$", file("${path.module}/.env")) : t[0] => trimspace(t[1]) }
+  local_only = ["IP"]
 }
+
 
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance
 resource "aws_instance" "main" {
@@ -131,6 +136,34 @@ resource "aws_iam_role" "main" {
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = local.name
   role = aws_iam_role.main.name
+}
+
+# every .env key except local_only, as KEY=value lines (TUNNEL_TOKEN, DISCORD_TOKEN, ...)
+# agent-secrets.service writes it to ~/src/agent/quadlets/.env on every boot
+# the value also ends up in the tofu state (s3://codabool-tf)
+resource "aws_ssm_parameter" "env" {
+  name  = "/agents/env"
+  type  = "SecureString" # default aws/ssm key, its key policy covers decrypt through SSM
+  value = join("", [for k, v in local.env : "${k}=${v}\n" if !contains(local.local_only, k)])
+  lifecycle {
+    precondition {
+      condition     = contains(keys(local.env), "TUNNEL_TOKEN")
+      error_message = "add TUNNEL_TOKEN=<cloudflared token> to .env, tunnel.container needs it"
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "ssm" {
+  name = "ssm"
+  role = aws_iam_role.main.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "ssm:GetParameter"
+      Resource = aws_ssm_parameter.env.arn
+    }]
+  })
 }
 
 moved {

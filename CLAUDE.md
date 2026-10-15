@@ -16,7 +16,7 @@ Repo `github.com/CodaBool/aws-agents` (public). Image `ghcr.io/codabool/aws-agen
 - User units are enabled with `systemctl --global enable`; only `ec2-user` lingers, so only its manager runs at boot.
 - cloud-init owns SSH: it puts the EC2 key pair `agents` (or the NoCloud seed in `just vm`) into `ec2-user`'s authorized_keys and adds the NOPASSWD sudo rule. The image is public: keep it free of keys and secrets.
 - Root partition growth is `bootc-generic-growpart.service`; cloud-init growpart/resize are off.
-- Host-side secrets live outside the repo, e.g. `~/.config/agent/tunnel.env` (TUNNEL_TOKEN).
+- Host-side secrets are never in the image or repo. The local `.env` (gitignored) holds them: every key except `local.local_only` (`IP`, used for `ssh_ipv4`) goes into one SSM SecureString `/agents/env` as `KEY=value` lines. `agent-secrets.service` (system, every boot, `awscli2` + instance role) replaces `~/src/agent/quadlets/.env` (gitignored, mode 600, shared `EnvironmentFile` of the quadlets) with it and restarts the tunnel. Add a secret = add a line to `.env` + `just apply`. It fails in `just vm` (no instance role).
 
 ## Quadlet layout
 - First boot, `agent-quadlets-clone.service` clones the repo to `~/src/agent` and symlinks `~/.config/containers/systemd -> ../../src/agent/quadlets`.
@@ -32,7 +32,7 @@ Repo `github.com/CodaBool/aws-agents` (public). Image `ghcr.io/codabool/aws-agen
 - Cost target: under $0.10/month for AMI storage. `just apply` = `tofu apply` then `just ami-clean`, which deregisters every `agents-*` AMI and deletes its snapshots.
 - `main.tf` uses `data "aws_ami_ids"` (empty list allowed) so plans work with no AMI; `aws_instance.main` has `ignore_changes = [ami]` and a placeholder AMI string when none exist (a null `ami` fails provider validation even with `ignore_changes`). Creating or replacing the instance needs `just ami` first.
 - bib does not tag AMIs; matching is on name `agents-*` + arm64.
-- Terraform is applied locally only, state in S3 bucket `codabool-tf`. The IAM role/profile `agents` has no policies; kept for future use.
+- Terraform is applied locally only, state in S3 bucket `codabool-tf`. The IAM role/profile `agents` only allows `ssm:GetParameter` on `/agents/env`.
 - Ask before anything that touches AWS (`tofu apply`, `just ami`, `just bootstrap`, `just key`, `just ami-clean`) or pushes to GHCR.
 
 ## Build and test
