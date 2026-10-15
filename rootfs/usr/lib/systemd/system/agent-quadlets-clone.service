@@ -1,0 +1,23 @@
+# first boot only: clone the quadlets, after that update with
+#   cd ~/src/agent && git pull && systemctl --user daemon-reload
+[Unit]
+Description=Clone agent quadlets for ec2-user
+Wants=network-online.target
+After=network-online.target systemd-tmpfiles-setup.service user@1000.service
+ConditionPathExists=!/var/home/ec2-user/src/agent
+
+[Service]
+Type=oneshot
+User=ec2-user
+ExecStart=/usr/bin/git clone https://github.com/CodaBool/aws-agents /var/home/ec2-user/src/agent
+ExecStart=/usr/bin/mkdir -p /var/home/ec2-user/.config/containers
+# only quadlets/ is linked, quadlet scans recursively and must not see the rest of the repo
+ExecStart=/usr/bin/ln -sfn ../../src/agent/quadlets /var/home/ec2-user/.config/containers/systemd
+# + runs as root, generate the quadlet units and start them
+ExecStartPost=+/usr/bin/systemctl --user -M ec2-user@ daemon-reload
+ExecStartPost=+/usr/bin/systemctl --user -M ec2-user@ start --no-block default.target
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

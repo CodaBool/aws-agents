@@ -1,0 +1,3 @@
+# qemu + aarch64 UEFI firmware + ISO tool for `just vm`, so nothing is layered on the host
+FROM registry.fedoraproject.org/fedora:44
+RUN dnf install -y qemu-system-aarch64-core qemu-img edk2-aarch64 xorriso openssh-clients && dnf clean all

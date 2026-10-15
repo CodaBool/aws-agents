@@ -1,0 +1,27 @@
+# tunnel.container
+[Container]
+ContainerName=tunnel
+Environment=TUNNEL_METRICS=0.0.0.0:60123
+
+# env has
+# TUNNEL_TOKEN=
+
+# create with: mkdir -p ~/.config/agent && install -m 600 /dev/null ~/.config/agent/tunnel.env
+EnvironmentFile=%h/.config/agent/tunnel.env
+Exec=tunnel run
+Image=docker.io/cloudflare/cloudflared
+Network=host
+
+# auto update
+AutoUpdate=registry
+
+[Service]
+
+# allow time for a new image to download
+TimeoutStartSec=900
+Restart=always
+
+[Install]
+
+# automatic startup
+WantedBy=default.target

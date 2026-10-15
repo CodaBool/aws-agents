@@ -1,0 +1,27 @@
+[Container]
+ContainerName=uptime
+# https://github.com/louislam/uptime-kuma/releases
+Image=docker.io/louislam/uptime-kuma:2
+PublishPort=3001:3001
+Volume=uptime.volume:/app/data:Z
+Volume=%t/podman/podman.sock:/run/user/1000/podman/podman.sock:z,ro
+
+# allows for uptime to reach other containers
+Network=host
+
+# needed to access podman.sock
+SecurityLabelDisable=true
+
+# auto update
+AutoUpdate=registry
+
+[Service]
+
+# allow time for a new image to download
+TimeoutStartSec=900
+Restart=always
+
+[Install]
+
+# automatic startup
+WantedBy=default.target

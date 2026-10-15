@@ -1,0 +1,9 @@
+[Unit]
+Description=Remove dangling podman images
+Documentation=man:podman-image-prune(1)
+After=podman-auto-update.service
+
+[Service]
+Type=oneshot
+# dangling only, no -a and no volumes
+ExecStart=/usr/bin/podman image prune -f

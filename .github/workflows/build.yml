@@ -1,0 +1,64 @@
+name: build
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 21 * * 1" # weekly, picks up Fedora base image updates
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/codabool/aws-agents
+
+jobs:
+  release:
+    # native arm64 for t4g, no QEMU
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write # required for github release
+      packages: write
+    steps:
+      # https://github.com/marketplace/actions/checkout
+      - uses: actions/checkout@v7
+
+      - name: Build the bootc image
+        run: podman build --pull=always -t "$IMAGE:latest" -t "$IMAGE:$GITHUB_SHA" .
+
+      - name: Smoke test
+        run: tests/smoke.sh "$IMAGE:latest"
+
+      - name: Push to GHCR
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GH_TOKEN" | podman login ghcr.io -u "${{ github.actor }}" --password-stdin
+          podman push "$IMAGE:latest"
+          podman push "$IMAGE:$GITHUB_SHA"
+
+      - name: Gather info for release
+        if: github.ref == 'refs/heads/main'
+        run: |
+          label() { podman image inspect "$IMAGE:latest" --format "{{ index .Labels \"$1\" }}"; }
+          {
+            echo "DISTRO_VERSION=$(label org.opencontainers.image.version)"
+            echo "LINUX_KERNAL=$(label ostree.linux)"
+            echo "DATE=$(date -u +%F)"
+          } >> "$GITHUB_ENV"
+
+      # https://github.com/marketplace/actions/gh-release
+      # one release per Fedora base version, updated in place on later builds
+      - uses: softprops/action-gh-release@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          make_latest: true
+          tag_name: ${{ env.DISTRO_VERSION }}
+          name: "Fedora ${{ env.DISTRO_VERSION }}"
+          body: |
+            Fedora Distro: ${{ env.DISTRO_VERSION }}
+            Linux Kernel: ${{ env.LINUX_KERNAL }}
+            Date Created: ${{ env.DATE }}
+            Commit: ${{ github.sha }}
+
+            `ghcr.io/codabool/aws-agents:latest` / `ghcr.io/codabool/aws-agents:${{ github.sha }}`
+
+            [Package Link](https://github.com/CodaBool/aws-agents/pkgs/container/aws-agents)

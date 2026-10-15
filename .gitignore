@@ -1,0 +1,8 @@
+*.env
+.env
+output/
+.terraform
+.terraform.lock.hcl
+config/
+*.pem
+*.junk.*
