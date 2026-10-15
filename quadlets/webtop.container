@@ -1,0 +1,26 @@
+# webtop.container
+[Container]
+ContainerName=webtop
+Environment=PUID=1000
+Environment=PGID=1000
+Environment=TZ=America/New_York
+Image=lscr.io/linuxserver/webtop:alpine-kde
+PublishPort=127.0.0.1:8666:3000
+
+Volume=webtop.volume:/config:Z
+# ram cap, not a reservation
+ShmSize=1g
+
+# no gpu on t4g, so no /dev/dri: software rendering only
+
+# auto update
+AutoUpdate=registry
+
+[Service]
+# allow time for a new image to download
+TimeoutStartSec=900
+Restart=always
+
+[Install]
+# automatic startup
+WantedBy=default.target

@@ -6,8 +6,7 @@ Environment=TUNNEL_METRICS=0.0.0.0:60123
 # env has
 # TUNNEL_TOKEN=
 
-# create with: mkdir -p ~/.config/agent && install -m 600 /dev/null ~/.config/agent/tunnel.env
-EnvironmentFile=%h/.config/agent/tunnel.env
+EnvironmentFile=%h/src/agent/quadlets/.env
 Exec=tunnel run
 Image=docker.io/cloudflare/cloudflared
 Network=host

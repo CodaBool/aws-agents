@@ -28,11 +28,12 @@ Repo `github.com/CodaBool/aws-agents` (public). Image `ghcr.io/codabool/aws-agen
 - EC2 boots only AMIs, and `ImportSnapshot` only reads from S3. So `just ami` runs bootc-image-builder `--type ami`, which uploads to bucket `codabool-agents-ami-import` and imports via the `vmimport` role. Bucket objects expire after 1 day.
 - Bucket name is duplicated in `justfile` and `main.tf`; keep them equal.
 - `just bootstrap` creates only the bucket + vmimport role (targeted apply), needed before the first `just ami`.
+- The EC2 key pair `agents` is not in Terraform: `just key` generates `~/.ssh/agents` locally if missing and imports the public half. Needed before the instance is created; `just ssh-ec2` uses it.
 - Cost target: under $0.10/month for AMI storage. `just apply` = `tofu apply` then `just ami-clean`, which deregisters every `agents-*` AMI and deletes its snapshots.
-- `main.tf` uses `data "aws_ami_ids"` (empty list allowed) so plans work with no AMI; `aws_instance.main` has `ignore_changes = [ami]`. Creating or replacing the instance needs `just ami` first.
+- `main.tf` uses `data "aws_ami_ids"` (empty list allowed) so plans work with no AMI; `aws_instance.main` has `ignore_changes = [ami]` and a placeholder AMI string when none exist (a null `ami` fails provider validation even with `ignore_changes`). Creating or replacing the instance needs `just ami` first.
 - bib does not tag AMIs; matching is on name `agents-*` + arm64.
 - Terraform is applied locally only, state in S3 bucket `codabool-tf`. The IAM role/profile `agents` has no policies; kept for future use.
-- Ask before anything that touches AWS (`tofu apply`, `just ami`, `just bootstrap`, `just ami-clean`) or pushes to GHCR.
+- Ask before anything that touches AWS (`tofu apply`, `just ami`, `just bootstrap`, `just key`, `just ami-clean`) or pushes to GHCR.
 
 ## Build and test
 - arm64 only. On the x86 workstation builds run under qemu-user-static; CI uses native `ubuntu-24.04-arm`.

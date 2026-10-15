@@ -79,16 +79,7 @@ just plan / just apply
 
 ### First deploy
 ```sh
-# 1. push this repo to github.com/CodaBool/aws-agents (public), CI pushes the image
-#    then make the ghcr package public: github.com/CodaBool/aws-agents/pkgs/container/aws-agents > settings
-# 2. AMI import bucket + vmimport role, once
-aws login
-just init && just bootstrap
-# 3. AMI
-just ami
-# 4. instance, then deletes the AMI + snapshot (only needed to create the instance)
-just apply
-ssh ec2-user@$(tofu output -raw ipv6)
+
 ```
 
 ### Links
@@ -97,73 +88,6 @@ ssh ec2-user@$(tofu output -raw ipv6)
 - [quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)
 
 ---
-
-# bashrc
-> baked into the image as `/etc/profile.d/agent.sh`, the functions below are not
-
-```sh
-alias large="find . -type f -size +50M -exec du -h {} \; | sort -n"
-alias size="du -sh -- *"
-alias c="cd ~/src/agent/quadlets && ls -lah"
-alias v="cd ~/.local/share/containers/storage/volumes && ls -lah"
-alias reload="systemctl --user daemon-reload"
-alias r="systemctl --user daemon-reload && systemctl --user restart $@"
-alias s="systemctl --user daemon-reload && systemctl --user stop $@"
-alias f="podman logs -f $@"
-alias e="podman logs $@"
-alias debug="systemd-analyze --user --generators=true verify \$@"
-alias valid="systemd-analyze --user --generators=true verify \$@"
-
-podunzip() {
-  local zip_file="$1"
-  local out_dir="$2"
-
-  if [ -z "$zip_file" ] || [ -z "$out_dir" ]; then
-    echo "Usage: podunzip ./file.zip output-folder"
-    return 1
-  fi
-
-  if [ ! -f "$zip_file" ]; then
-    echo "Zip file not found: $zip_file"
-    return 1
-  fi
-
-  mkdir -p "$out_dir"
-
-  podman run --rm \
-    -v "$PWD:/work:rw" \
-    -w /work \
-    --security-opt label=disable \
-    docker.io/library/debian:trixie-slim \
-    sh -c 'apt-get update >/dev/null && apt-get install -y unzip >/dev/null && unzip -o "$1" -d "$2"' \
-    sh "$zip_file" "$out_dir"
-}
-
-p() {
-    local DRY=false
-    if [[ "$1" == "--dry" ]]; then
-        DRY=true
-    fi
-
-    local TARGET="../$(basename "$PWD")"
-
-    local CHOWN_CMD="sudo chown -R 1000:1000 \"$TARGET\""
-    local CHMOD_CMD="sudo chmod -R 755 \"$TARGET\""
-
-    if [[ "$DRY" == true ]]; then
-        echo "[Dry Run] Would execute:"
-        echo "  $CHOWN_CMD"
-        echo "  $CHMOD_CMD"
-    else
-        echo "Executing:"
-        echo "  $CHOWN_CMD"
-        eval "$CHOWN_CMD"
-
-        echo "  $CHMOD_CMD"
-        eval "$CHMOD_CMD"
-    fi
-}
-```
 
 # General Dev Notes
 - [plasma bigscreen](https://invent.kde.org/plasma/plasma-bigscreen), buy a intel nuc kit put bazzite on it.
@@ -182,3 +106,11 @@ ssh ec2-user@<ipv6>
 sudo bootc upgrade --apply   # or wait for the daily timer
 cat /etc/os-release
 ```
+
+# quick start
+1. just init
+2. just bootstrap
+3. just ami
+4. just key
+5. just apply
+6. just ssh-ec2

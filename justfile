@@ -78,6 +78,22 @@ init:
 bootstrap:
   tofu apply -target=aws_s3_bucket.ami_import -target=aws_s3_bucket_public_access_block.ami_import -target=aws_s3_bucket_lifecycle_configuration.ami_import -target=aws_iam_role_policy.vmimport
 
+# EC2 key pair `agents` (main.tf key_name) from ~/.ssh/agents, needed before the instance is created
+# cloud-init puts it in ec2-user's authorized_keys
+key:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  [ -f ~/.ssh/agents ] || ssh-keygen -t ed25519 -C agents -f ~/.ssh/agents
+  if aws ec2 describe-key-pairs --region {{region}} --key-names agents >/dev/null 2>&1; then
+    echo "key pair agents already exists in {{region}}, delete it first if it is not ~/.ssh/agents.pub"
+  else
+    aws ec2 import-key-pair --region {{region}} --key-name agents --public-key-material fileb://$HOME/.ssh/agents.pub
+  fi
+
+# ssh to the EC2 instance, `just ssh-ec2 ipv4` if you are not on ipv6
+ssh-ec2 family="ipv4":
+  ssh -i ~/.ssh/agents ec2-user@$(tofu output -raw {{family}})
+
 plan:
   tofu plan
 
