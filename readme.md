@@ -1,18 +1,5 @@
-<a href="https://www.youtube.com/watch?v=2H5lqPRPNhA">
-  <img src="https://github.com/CodaBool/stargazer/blob/main/public/pom.gif?raw=true" style="height:70px;">
-</a>
-
-```
-         .--"--.           
-       / -     - \         
-      / (O)   (O) \        
-   ~~~| -=(,Y,)=- |       
-    .---. /`  \   |~~      
- ~/  o  o \~~~~.----. ~~  don't talk to us    
-  | =(X)= |~  / (O (O) \   
-   ~~~~~~~  ~| =(Y_)=-  |   
-  ~~~~    ~~~|   U      |~~ 
-```
+# archive
+aws is too expensive, self-host wins agin. Moved to podman webtop / hermes
 
 # Layout
 | path | what |
